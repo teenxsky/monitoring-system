@@ -205,7 +205,7 @@ services:
     expose:
       - ${DOCKER_NGINXLOG_EXPORTER_PORT}
     volumes:
-      - /opt/homebrew/var/log/nginx:/var/log/nginx:ro
+      - ${NGINX_LOGS_LOCAL_PATH}:/var/log/nginx:ro
     restart: unless-stopped
 
 volumes:

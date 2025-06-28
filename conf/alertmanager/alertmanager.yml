@@ -1,0 +1,26 @@
+global:
+  resolve_timeout: 2m
+  telegram_api_url: "https://api.telegram.org"
+
+templates:
+  - "/etc/alertmanager/*.tmpl"
+
+receivers:
+  - name: telegram-bot
+    telegram_configs:
+      - chat_id: ${ALERTMANAGER_TG_CHAT_ID}
+        bot_token: ${ALERTMANAGER_TG_BOT_TOKEN}
+        api_url: "https://api.telegram.org"
+        parse_mode: HTML
+        message: '{{ template "telegram.default" . }}'
+
+route:
+  group_wait: 10s
+  group_interval: 15s
+  repeat_interval: 6h
+  receiver: telegram-bot
+  routes:
+    - receiver: telegram-bot
+      continue: true
+      matchers:
+        - severity="critical"

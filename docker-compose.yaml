@@ -1,0 +1,215 @@
+name: monitoring-system
+
+services:
+  grafana:
+    container_name: monitor__grafana
+    hostname: ${DOCKER_GRAFANA_HOST}
+    build:
+      context: .
+      dockerfile: ./images/grafana.Dockerfile
+    ports:
+      - ${APP_PORT}:${DOCKER_GRAFANA_PORT}
+    command:
+      - "--config=/etc/grafana/grafana.ini"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - TZ=${TZ}
+      - GF_SERVER_HTTP_PORT=${DOCKER_GRAFANA_PORT}
+      - GF_SERVER_ROOT_URL=http://${DOMAIN_NAME}:${APP_PORT}/
+
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USERNAME}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+
+      - LOKI_PORT=${DOCKER_LOKI_PORT}
+      - LOKI_HOST=${DOCKER_LOKI_HOST}
+      - PROMETHEUS_PORT=${DOCKER_PROMETHEUS_PORT}
+      - PROMETHEUS_HOST=${DOCKER_PROMETHEUS_HOST}
+    restart: unless-stopped
+    depends_on:
+      - loki
+      - prometheus
+
+  prometheus:
+    container_name: monitor__prometheus
+    hostname: ${DOCKER_PROMETHEUS_HOST}
+    build:
+      context: .
+      dockerfile: ./images/prometheus.Dockerfile
+      args:
+        - PROMETHEUS_PORT=${DOCKER_PROMETHEUS_PORT}
+        - PROMETHEUS_HOST=${DOCKER_PROMETHEUS_HOST}
+        - NODE_EXPORTER_PORT=${DOCKER_NODE_EXPORTER_PORT}
+        - NODE_EXPORTER_HOST=${DOCKER_NODE_EXPORTER_HOST}
+        - CADVISOR_PORT=${DOCKER_CADVISOR_PORT}
+        - CADVISOR_HOST=${DOCKER_CADVISOR_HOST}
+        - ALERTMANAGER_PORT=${DOCKER_ALERTMANAGER_PORT}
+        - ALERTMANAGER_HOST=${DOCKER_ALERTMANAGER_HOST}
+        - NGINXLOG_EXPORTER_PORT=${DOCKER_NGINXLOG_EXPORTER_PORT}
+        - NGINXLOG_EXPORTER_HOST=${DOCKER_NGINXLOG_EXPORTER_HOST}
+    command:
+      - "--web.listen-address=0.0.0.0:${DOCKER_PROMETHEUS_PORT}"
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--log.level=error"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=7d"
+    expose:
+      - ${DOCKER_PROMETHEUS_PORT}
+    volumes:
+      - prometheus_data:/prometheus
+    environment:
+      - TZ=${TZ}
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 1024M
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+    restart: unless-stopped
+    depends_on:
+      - cadvisor
+      - node-exporter
+
+  alertmanager:
+    container_name: monitor__alertmanager
+    hostname: ${DOCKER_ALERTMANAGER_HOST}
+    build:
+      context: .
+      dockerfile: ./images/alertmanager.Dockerfile
+      args:
+        - ALERTMANAGER_TG_CHAT_ID=${ALERTMANAGER_TG_CHAT_ID}
+        - ALERTMANAGER_TG_BOT_TOKEN=${ALERTMANAGER_TG_BOT_TOKEN}
+    expose:
+      - ${DOCKER_ALERTMANAGER_PORT}
+    command:
+      - "--web.listen-address=0.0.0.0:${DOCKER_ALERTMANAGER_PORT}"
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+    volumes:
+      - alert_data:/alertmanager
+    environment:
+      - TZ=${TZ}
+    restart: unless-stopped
+
+  loki:
+    container_name: monitor__loki
+    hostname: ${DOCKER_LOKI_HOST}
+    build:
+      context: .
+      dockerfile: ./images/loki.Dockerfile
+    command:
+      - "--validation.allow-structured-metadata=false"
+      - "--config.expand-env=true"
+      - "--config.file=/etc/loki/loki.yaml"
+    expose:
+      - ${DOCKER_LOKI_PORT}
+    volumes:
+      - loki_data:/loki
+    environment:
+      - TZ=${TZ}
+      - LOKI_PORT=${DOCKER_LOKI_PORT}
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 1024M
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+
+  promtail:
+    container_name: monitor__promtail
+    hostname: ${DOCKER_PROMTAIL_HOST}
+    build:
+      context: .
+      dockerfile: ./images/promtail.Dockerfile
+    command:
+      - "--config.expand-env=true"
+      - "--config.file=/etc/promtail/promtail.yaml"
+    expose:
+      - ${DOCKER_PROMTAIL_PORT}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/containers:/var/lib/containers
+    environment:
+      - TZ=${TZ}
+      - PROMTAIL_PORT=${DOCKER_PROMTAIL_PORT}
+      - LOKI_HOST=${DOCKER_LOKI_HOST}
+      - LOKI_PORT=${DOCKER_LOKI_PORT}
+    restart: unless-stopped
+    deploy:
+      mode: global
+      update_config:
+        order: stop-first
+      resources:
+        limits:
+          memory: 512M
+
+  cadvisor:
+    container_name: monitor__cadvisor
+    hostname: ${DOCKER_CADVISOR_HOST}
+    privileged: true
+    build:
+      context: .
+      dockerfile: ./images/cadvisor.Dockerfile
+    command: "--port=${DOCKER_CADVISOR_PORT}"
+    expose:
+      - ${DOCKER_CADVISOR_PORT}
+    volumes:
+      - /:/rootfs:ro
+      - /var/run/:/var/run/:rw
+      - /sys:/sys:ro
+      - /var/lib/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+      - /etc/machine-id:/etc/machine-id:ro
+      - /var/lib/dbus/machine-id:/var/lib/dbus/machine-id:ro
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    restart: unless-stopped
+
+  node-exporter:
+    container_name: monitor__node-exporter
+    hostname: ${DOCKER_NODE_EXPORTER_HOST}
+    build:
+      context: .
+      dockerfile: ./images/node-exporter.Dockerfile
+    command:
+      - "--web.listen-address=0.0.0.0:${DOCKER_NODE_EXPORTER_PORT}"
+      - "--path.procfs=/host/proc"
+      - "--path.rootfs=/rootfs"
+      - "--path.sysfs=/host/sys"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    expose:
+      - ${DOCKER_NODE_EXPORTER_PORT}
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    restart: unless-stopped
+
+  nginxlog-exporter:
+    container_name: monitor__nginxlog-exporter
+    hostname: ${DOCKER_NGINXLOG_EXPORTER_HOST}
+    build:
+      context: .
+      dockerfile: ./images/nginxlog-exporter.Dockerfile
+      args:
+        - NGINXLOG_PORT=${DOCKER_NGINXLOG_EXPORTER_PORT}
+    command:
+      - "-listen-port=${DOCKER_NGINXLOG_EXPORTER_PORT}"
+      - "-config-file=/etc/nginxlog/nginxlog-exporter.hcl"
+    expose:
+      - ${DOCKER_NGINXLOG_EXPORTER_PORT}
+    volumes:
+      - /opt/homebrew/var/log/nginx:/var/log/nginx:ro
+    restart: unless-stopped
+
+volumes:
+  loki_data:
+  alert_data:
+  grafana_data:
+  prometheus_data:

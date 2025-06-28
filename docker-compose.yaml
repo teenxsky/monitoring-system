@@ -22,6 +22,8 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
       - GF_USERS_ALLOW_SIGN_UP=false
 
+      - LOKI_PORT=${DOCKER_LOKI_PORT}
+      - LOKI_HOST=${DOCKER_LOKI_HOST}
       - PROMETHEUS_PORT=${DOCKER_PROMETHEUS_PORT}
       - PROMETHEUS_HOST=${DOCKER_PROMETHEUS_HOST}
     restart: unless-stopped
@@ -59,10 +61,63 @@ services:
           cpus: "0.25"
           memory: 512M
     restart: unless-stopped
-    depends_on:
-      - cadvisor
-      - node-exporter
+
+  loki:
+    container_name: monitor__loki
+    hostname: ${DOCKER_LOKI_HOST}
+    build:
+      context: .
+      dockerfile: ./images/loki.Dockerfile
+    command:
+      - "--validation.allow-structured-metadata=false"
+      - "--config.expand-env=true"
+      - "--config.file=/etc/loki/loki.yaml"
+    expose:
+      - ${DOCKER_LOKI_PORT}
+    volumes:
+      - loki_data:/loki
+    environment:
+      - TZ=${TZ}
+      - LOKI_PORT=${DOCKER_LOKI_PORT}
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 1024M
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+
+  promtail:
+    container_name: monitor__promtail
+    hostname: ${DOCKER_PROMTAIL_HOST}
+    build:
+      context: .
+      dockerfile: ./images/promtail.Dockerfile
+    command:
+      - "--config.expand-env=true"
+      - "--config.file=/etc/promtail/promtail.yaml"
+    expose:
+      - ${DOCKER_PROMTAIL_PORT}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/containers:/var/lib/containers
+    environment:
+      - TZ=${TZ}
+      - PROMTAIL_PORT=${DOCKER_PROMTAIL_PORT}
+      - LOKI_HOST=${DOCKER_LOKI_HOST}
+      - LOKI_PORT=${DOCKER_LOKI_PORT}
+    restart: unless-stopped
+    deploy:
+      mode: global
+      update_config:
+        order: stop-first
+      resources:
+        limits:
+          memory: 512M
 
 volumes:
+  loki_data:
   grafana_data:
   prometheus_data:

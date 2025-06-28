@@ -46,41 +46,32 @@ groups:
           description: "🚨 Высокая загрузка inode на {{ $labels.instance }} 🚨"
           summary: "Inode заполнены на 95%. Проверьте диск!"
 
-      - alert: CPUUsageWarning
-        expr: 100 - (avg by(instance)(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 70
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          description: "Высокая загрузка CPU на {{ $labels.instance }}"
-          summary: "CPU > 70% более 5 минут."
-
       - alert: CPUUsageCritical
-        expr: 100 - (avg by(instance)(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        expr: 100 - (avg by(instance)(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
         for: 5m
         labels:
           severity: critical
         annotations:
           description: "🚨 Высокая загрузка CPU на {{ $labels.instance }} 🚨"
-          summary: "CPU > 85% более 5 минут."
+          summary: "CPU > 90% более 5 минут."
 
       - alert: RAMUsageWarning
-        expr: 100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 70
+        expr: 100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 85
         for: 5m
         labels:
           severity: warning
         annotations:
           description: "Высокая загрузка памяти на {{ $labels.instance }}"
-          summary: "RAM > 70% более 5 минут."
+          summary: "RAM > 85% более 5 минут."
 
       - alert: RAMUsageCritical
-        expr: 100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 85
+        expr: 100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 90
         for: 5m
         labels:
           severity: critical
         annotations:
           description: "🚨 Высокая загрузка памяти на {{ $labels.instance }} 🚨"
-          summary: "RAM > 85% более 1 минуты."
+          summary: "RAM > 90% более 1 минуты."
 
       - alert: NetworkErrors
         expr: rate(node_network_receive_errs_total[5m]) > 0 or rate(node_network_transmit_errs_total[5m]) > 0

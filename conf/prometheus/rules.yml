@@ -1,0 +1,101 @@
+groups:
+  - name: CriticalAlerts
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          description: "🚨 Service '{{ $labels.instance }}' is down 🚨"
+          summary: "Сервис '{{ $labels.instance }}' недоступен более 1 минуты."
+
+      - alert: ServiceDownLong
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          description: "🚨 Service '{{ $labels.instance }}' is down for 5 minutes 🚨"
+          summary: "Сервис '{{ $labels.instance }}' недоступен более 5 минут!"
+
+      - alert: DiskSpaceUsageWarning
+        expr: 100 - (node_filesystem_avail_bytes{fstype!="tmpfs",fstype!="devtmpfs"} * 100 / node_filesystem_size_bytes{fstype!="tmpfs",fstype!="devtmpfs"}) > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          description: "Disk usage warning on {{ $labels.instance }}"
+          summary: "Диск заполнен более чем на 90%."
+
+      - alert: DiskSpaceUsageCritical
+        expr: 100 - (node_filesystem_avail_bytes{fstype!="tmpfs",fstype!="devtmpfs"} * 100 / node_filesystem_size_bytes{fstype!="tmpfs",fstype!="devtmpfs"}) > 95
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          description: "🚨 High disk usage: {{ $labels.instance }} 🚨"
+          summary: "Диск заполнен на 95%. Проверьте диск!"
+
+      - alert: DiskInodeUsageCritical
+        expr: 100 - (node_filesystem_files_free{fstype!="tmpfs",fstype!="devtmpfs"} * 100 / node_filesystem_files{fstype!="tmpfs",fstype!="devtmpfs"}) > 95
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          description: "🚨 High inode usage: {{ $labels.instance }} 🚨"
+          summary: "Inode заполнены на 95%. Проверьте диск!"
+
+      - alert: CPUUsageWarning
+        expr: 100 - (avg by(instance)(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 70
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          description: "CPU usage warning on {{ $labels.instance }}"
+          summary: "CPU > 70% более 5 минут."
+
+      - alert: CPUUsageCritical
+        expr: 100 - (avg by(instance)(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          description: "🚨 High CPU usage {{ $labels.instance }} 🚨"
+          summary: "CPU > 85% более 5 минут."
+
+      - alert: RAMUsageWarning
+        expr: 100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 70
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          description: "RAM usage warning on {{ $labels.instance }}"
+          summary: "RAM > 70% более 5 минут."
+
+      - alert: RAMUsageCritical
+        expr: 100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 85
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          description: "🚨 High RAM usage {{ $labels.instance }} 🚨"
+          summary: "RAM > 85% более 1 минуты."
+
+      - alert: NetworkErrors
+        expr: rate(node_network_receive_errs_total[5m]) > 0 or rate(node_network_transmit_errs_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          description: "Network errors detected on {{ $labels.instance }}"
+          summary: "Обнаружены ошибки сети (receive/transmit errors)."
+
+      - alert: NginxHigh5xxErrorRate
+        expr: sum(increase(nginx_http_response_count_total{status=~"5.."}[1m])) > 5
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          description: "🚨 Высокий уровень ошибок 5xx на nginx ({{ $value }} за минуту) на {{ $labels.instance }}. 🚨"
+          summary: "Более 5 ошибок 5xx за последнюю минуту."

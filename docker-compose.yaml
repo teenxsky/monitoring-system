@@ -1,0 +1,68 @@
+name: monitoring-system
+
+services:
+  grafana:
+    container_name: monitor__grafana
+    hostname: ${DOCKER_GRAFANA_HOST}
+    build:
+      context: .
+      dockerfile: ./images/grafana.Dockerfile
+    ports:
+      - ${APP_PORT}:${DOCKER_GRAFANA_PORT}
+    command:
+      - "--config=/etc/grafana/grafana.ini"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - TZ=${TZ}
+      - GF_SERVER_HTTP_PORT=${DOCKER_GRAFANA_PORT}
+      - GF_SERVER_ROOT_URL=http://${DOMAIN_NAME}:${APP_PORT}/
+
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USERNAME}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+
+      - PROMETHEUS_PORT=${DOCKER_PROMETHEUS_PORT}
+      - PROMETHEUS_HOST=${DOCKER_PROMETHEUS_HOST}
+    restart: unless-stopped
+    depends_on:
+      - loki
+      - prometheus
+
+  prometheus:
+    container_name: monitor__prometheus
+    hostname: ${DOCKER_PROMETHEUS_HOST}
+    build:
+      context: .
+      dockerfile: ./images/prometheus.Dockerfile
+      args:
+        - PROMETHEUS_PORT=${DOCKER_PROMETHEUS_PORT}
+        - PROMETHEUS_HOST=${DOCKER_PROMETHEUS_HOST}
+    command:
+      - "--web.listen-address=0.0.0.0:${DOCKER_PROMETHEUS_PORT}"
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--log.level=error"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=7d"
+    expose:
+      - ${DOCKER_PROMETHEUS_PORT}
+    volumes:
+      - prometheus_data:/prometheus
+    environment:
+      - TZ=${TZ}
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 1024M
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+    restart: unless-stopped
+    depends_on:
+      - cadvisor
+      - node-exporter
+
+volumes:
+  grafana_data:
+  prometheus_data:

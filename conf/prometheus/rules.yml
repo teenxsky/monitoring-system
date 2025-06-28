@@ -2,22 +2,22 @@ groups:
   - name: CriticalAlerts
     rules:
       - alert: ServiceDown
-        expr: up == 0
-        for: 1m
+        expr: time() - container_last_seen > 60
+        for: 0m
         labels:
           severity: critical
         annotations:
-          description: "🚨 Service '{{ $labels.instance }}' is down 🚨"
-          summary: "Сервис '{{ $labels.instance }}' недоступен более 1 минуты."
+          summary: "🚨 Сервис '{{ $labels.name }}' недоступен более 1 минуты. 🚨"
+          description: "Сервис '{{ $labels.name }}' недоступен."
 
       - alert: ServiceDownLong
-        expr: up == 0
-        for: 5m
+        expr: time() - container_last_seen > 300
+        for: 0m
         labels:
           severity: critical
         annotations:
-          description: "🚨 Service '{{ $labels.instance }}' is down for 5 minutes 🚨"
-          summary: "Сервис '{{ $labels.instance }}' недоступен более 5 минут!"
+          summary: "🚨 Сервис '{{ $labels.name }}' недоступен более 5 минут. 🚨"
+          description: "Сервис '{{ $labels.name }}' недоступен."
 
       - alert: DiskSpaceUsageWarning
         expr: 100 - (node_filesystem_avail_bytes{fstype!="tmpfs",fstype!="devtmpfs"} * 100 / node_filesystem_size_bytes{fstype!="tmpfs",fstype!="devtmpfs"}) > 90
@@ -25,8 +25,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          description: "Disk usage warning on {{ $labels.instance }}"
           summary: "Диск заполнен более чем на 90%."
+          description: "Высокая загрузка диска на {{ $labels.instance }}"
 
       - alert: DiskSpaceUsageCritical
         expr: 100 - (node_filesystem_avail_bytes{fstype!="tmpfs",fstype!="devtmpfs"} * 100 / node_filesystem_size_bytes{fstype!="tmpfs",fstype!="devtmpfs"}) > 95
@@ -34,7 +34,7 @@ groups:
         labels:
           severity: critical
         annotations:
-          description: "🚨 High disk usage: {{ $labels.instance }} 🚨"
+          description: "🚨 Высокая загрузка диска на {{ $labels.instance }} 🚨"
           summary: "Диск заполнен на 95%. Проверьте диск!"
 
       - alert: DiskInodeUsageCritical
@@ -43,7 +43,7 @@ groups:
         labels:
           severity: critical
         annotations:
-          description: "🚨 High inode usage: {{ $labels.instance }} 🚨"
+          description: "🚨 Высокая загрузка inode на {{ $labels.instance }} 🚨"
           summary: "Inode заполнены на 95%. Проверьте диск!"
 
       - alert: CPUUsageWarning
@@ -52,7 +52,7 @@ groups:
         labels:
           severity: warning
         annotations:
-          description: "CPU usage warning on {{ $labels.instance }}"
+          description: "Высокая загрузка CPU на {{ $labels.instance }}"
           summary: "CPU > 70% более 5 минут."
 
       - alert: CPUUsageCritical
@@ -61,7 +61,7 @@ groups:
         labels:
           severity: critical
         annotations:
-          description: "🚨 High CPU usage {{ $labels.instance }} 🚨"
+          description: "🚨 Высокая загрузка CPU на {{ $labels.instance }} 🚨"
           summary: "CPU > 85% более 5 минут."
 
       - alert: RAMUsageWarning
@@ -70,16 +70,16 @@ groups:
         labels:
           severity: warning
         annotations:
-          description: "RAM usage warning on {{ $labels.instance }}"
+          description: "Высокая загрузка памяти на {{ $labels.instance }}"
           summary: "RAM > 70% более 5 минут."
 
       - alert: RAMUsageCritical
         expr: 100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 85
-        for: 1m
+        for: 5m
         labels:
           severity: critical
         annotations:
-          description: "🚨 High RAM usage {{ $labels.instance }} 🚨"
+          description: "🚨 Высокая загрузка памяти на {{ $labels.instance }} 🚨"
           summary: "RAM > 85% более 1 минуты."
 
       - alert: NetworkErrors
@@ -88,14 +88,14 @@ groups:
         labels:
           severity: warning
         annotations:
-          description: "Network errors detected on {{ $labels.instance }}"
+          description: "Обнаружены ошибки сети (receive/transmit errors) на {{ $labels.instance }}"
           summary: "Обнаружены ошибки сети (receive/transmit errors)."
 
       - alert: NginxHigh5xxErrorRate
-        expr: sum(increase(nginx_http_response_count_total{status=~"5.."}[1m])) > 5
+        expr: sum(increase(nginx_http_response_count_total{status=~"5.."}[1m])) > 10
         for: 1m
         labels:
           severity: critical
         annotations:
           description: "🚨 Высокий уровень ошибок 5xx на nginx ({{ $value }} за минуту) на {{ $labels.instance }}. 🚨"
-          summary: "Более 5 ошибок 5xx за последнюю минуту."
+          summary: "Более 10 ошибок 5xx за последнюю минуту."

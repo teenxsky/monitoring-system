@@ -1,21 +1,26 @@
 {{ define "telegram.default" }}
 {{ range .Alerts }}
-{{ if eq .Status "firing"}}&#x1F525<b>{{ .Status | toUpper }}</b>&#x1F525{{ else }}&#x2705<b>{{ .Status | toUpper }}</b>&#x2705{{ end }}
-<b>{{ .Labels.alertname }}</b>
+{{ if eq .Status "firing" }}
+🔥 <b>{{ .Status | toUpper }}</b> 🔥
+{{ else }}
+✅ <b>{{ .Status | toUpper }}</b> ✅
+{{ end }}
+
+<b>🚨 Alert:</b> <code>{{ .Labels.alertname }}</code>
 {{- if .Labels.severity }}
-<b>Severity:</b> {{ .Labels.severity }}
+<b>🛑 Severity:</b> <code>{{ .Labels.severity }}</code>
 {{- end }}
-{{- if .Labels.instance }}
-<b>Instance label:</b> {{ .Labels.instance }}
+
+{{- if .Annotations.summary }}
+<b>📝 Summary:</b> {{ .Annotations.summary }}
 {{- end }}
 {{- if .Annotations.message }}
-{{ .Annotations.message }}
-{{- end }}
-{{- if .Annotations.summary }}
-<b>Message:</b> {{ .Annotations.summary }}
+<b>💬 Message:</b> {{ .Annotations.message }}
 {{- end }}
 {{- if .Annotations.description }}
-<b>Description:</b> {{ .Annotations.description }}
+<b>📋 Description:</b> {{ .Annotations.description }}
 {{- end }}
+<b>🔍 Details:</b> 
+{{ .Labels }}
 {{ end }}
 {{ end }}

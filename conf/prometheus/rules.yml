@@ -2,7 +2,7 @@ groups:
   - name: CriticalAlerts
     rules:
       - alert: ServiceDown
-        expr: time() - container_last_seen > 60
+        expr: (time() - container_last_seen{id!="/init.scope", id!="/docker/buildkit", id!="/docker", id!="/.lxc", id!="/"}) > 60
         for: 0m
         labels:
           severity: critical
@@ -11,7 +11,7 @@ groups:
           description: "Сервис '{{ $labels.name }}' недоступен."
 
       - alert: ServiceDownLong
-        expr: time() - container_last_seen > 300
+        expr: (time() - container_last_seen{id!="/init.scope", id!="/docker/buildkit", id!="/docker", id!="/.lxc", id!="/"}) > 300
         for: 0m
         labels:
           severity: critical
@@ -30,7 +30,7 @@ groups:
 
       - alert: DiskSpaceUsageCritical
         expr: 100 - (node_filesystem_avail_bytes{fstype!="tmpfs",fstype!="devtmpfs"} * 100 / node_filesystem_size_bytes{fstype!="tmpfs",fstype!="devtmpfs"}) > 95
-        for: 1m
+        for: 5m
         labels:
           severity: critical
         annotations:
@@ -39,7 +39,7 @@ groups:
 
       - alert: DiskInodeUsageCritical
         expr: 100 - (node_filesystem_files_free{fstype!="tmpfs",fstype!="devtmpfs"} * 100 / node_filesystem_files{fstype!="tmpfs",fstype!="devtmpfs"}) > 95
-        for: 1m
+        for: 5m
         labels:
           severity: critical
         annotations:
@@ -75,7 +75,7 @@ groups:
 
       - alert: NetworkErrors
         expr: rate(node_network_receive_errs_total[5m]) > 0 or rate(node_network_transmit_errs_total[5m]) > 0
-        for: 2m
+        for: 3m
         labels:
           severity: warning
         annotations:

@@ -2,7 +2,7 @@ groups:
   - name: CriticalAlerts
     rules:
       - alert: ServiceDown
-        expr: (time() - container_last_seen{id!="/init.scope", id!="/docker/buildkit", id!="/docker", id!="/.lxc", id!="/"}) > 60
+        expr: (time() - container_last_seen{name=~".+"}) > 60
         for: 0m
         labels:
           severity: critical
@@ -11,7 +11,7 @@ groups:
           description: "Сервис '{{ $labels.name }}' недоступен."
 
       - alert: ServiceDownLong
-        expr: (time() - container_last_seen{id!="/init.scope", id!="/docker/buildkit", id!="/docker", id!="/.lxc", id!="/"}) > 300
+        expr: (time() - container_last_seen{name=~".+"}) > 300
         for: 0m
         labels:
           severity: critical
